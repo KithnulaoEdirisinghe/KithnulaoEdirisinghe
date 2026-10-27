@@ -51,22 +51,24 @@ LILAC = "#cfc4f5"
 DIM = "#8b7fb0"
 LINE = "#2c1d4a"
 
-LETTER_STROKE = 18
-# Single-weight letters in the spirit of 1970s space-agency lettering.
-# Centreline paths on a 0..100 tall grid; diagonals overshoot and are clipped flat
-# to the cap height and baseline. Widths are the centreline extent.
+LETTER_STROKE = 22
+# Worm-style lettering: one heavy stroke weight, long smooth curves where strokes
+# turn, flat terminals and an A without a crossbar. Centreline paths on a 0..100
+# tall grid; diagonals overshoot and are clipped flat to the cap height and
+# baseline. Widths are the centreline extent.
 LETTERS = {
-    "K": (62, "M0 10V90M70 -8L12 50L72 108"),
+    "K": (74, "M0 10V90M86 -8L16 50L86 108"),
     "I": (0, "M0 10V90"),
-    "T": (64, "M0 10H64M32 10V90"),
-    "H": (60, "M0 10V90M60 10V90M0 50H60"),
-    "N": (60, "M0 90V26Q0 6 12 22L48 78Q60 94 60 74V10"),
-    "U": (60, "M0 10V60A30 30 0 0 0 60 60V10"),
-    "L": (54, "M0 10V90H54"),
-    "A": (64, "M-6 108L27 19Q32 6 37 19L70 108"),
+    "T": (80, "M0 10H80M40 10V90"),
+    "H": (72, "M0 10V90M72 10V90M0 50H72"),
+    "N": (90, "M0 90V34C0 2 32 2 40 24L60 68C68 94 90 98 90 66V10"),
+    "U": (76, "M0 10V54A38 36 0 0 0 76 54V10"),
+    "L": (66, "M0 10V68Q0 90 22 90H66"),
+    "A": (86, "M-8 108L28 26C33 6 53 6 58 26L94 108"),
 }
+LETTER_GAP = 10
 # Optical spacing adjustments between letter pairs (open shapes sit closer).
-KERNING = {"KI": 4, "IT": -6, "TH": -6, "LA": -20}
+KERNING = {"IT": -10, "TH": -10, "LA": -26}
 
 
 # ---------------------------------------------------------------- data
@@ -210,13 +212,16 @@ def wordmark(text, x, y, scale):
     for i, ch in enumerate(text):
         w, d = LETTERS[ch]
         parts.append(f'<path transform="translate({cx + LETTER_STROKE / 2})" d="{d}"/>')
-        cx += w + LETTER_STROKE + 14 + KERNING.get(text[i:i + 2], 0)
-    width = (cx - 14) * scale
+        cx += w + LETTER_STROKE + LETTER_GAP + KERNING.get(text[i:i + 2], 0)
+    width = (cx - LETTER_GAP) * scale
     top, bottom = 10 - LETTER_STROKE / 2, 90 + LETTER_STROKE / 2
-    return (f'<defs><clipPath id="cap"><rect x="-40" y="{top}" width="{cx + 80}" height="{bottom - top}"/></clipPath></defs>'
-            f'<g transform="translate({x - width / 2:.1f} {y}) scale({scale})">'
+    # The blur + alpha threshold slightly softens every corner, like the printed worm.
+    return (f'<defs><clipPath id="cap"><rect x="-40" y="{top}" width="{cx + 80}" height="{bottom - top}"/></clipPath>'
+            f'<filter id="soft" x="-5%" y="-10%" width="110%" height="120%"><feGaussianBlur stdDeviation="1.8"/>'
+            f'<feColorMatrix values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 24 -11"/></filter></defs>'
+            f'<g transform="translate({x - width / 2:.1f} {y}) scale({scale})"><g filter="url(#soft)">'
             f'<g clip-path="url(#cap)" fill="none" stroke="{RED}" stroke-width="{LETTER_STROKE}" '
-            f'stroke-linejoin="miter">{"".join(parts)}</g></g>')
+            f'stroke-linejoin="round">{"".join(parts)}</g></g></g>')
 
 
 # ---------------------------------------------------------------- visuals
