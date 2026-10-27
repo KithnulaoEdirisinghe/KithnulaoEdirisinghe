@@ -51,24 +51,11 @@ LILAC = "#cfc4f5"
 DIM = "#8b7fb0"
 LINE = "#2c1d4a"
 
-LETTER_STROKE = 22
-# Worm-style lettering: one heavy stroke weight, long smooth curves where strokes
-# turn, flat terminals and an A without a crossbar. Centreline paths on a 0..100
-# tall grid; diagonals overshoot and are clipped flat to the cap height and
-# baseline. Widths are the centreline extent.
-LETTERS = {
-    "K": (74, "M0 10V90M86 -8L16 50L86 108"),
-    "I": (0, "M0 10V90"),
-    "T": (80, "M0 10H80M40 10V90"),
-    "H": (72, "M0 10V90M72 10V90M0 50H72"),
-    "N": (90, "M0 90V34C0 2 32 2 40 24L60 68C68 94 90 98 90 66V10"),
-    "U": (76, "M0 10V54A38 36 0 0 0 76 54V10"),
-    "L": (66, "M0 10V68Q0 90 22 90H66"),
-    "A": (86, "M-8 108L28 26C33 6 53 6 58 26L94 108"),
-}
-LETTER_GAP = 10
-# Optical spacing adjustments between letter pairs (open shapes sit closer).
-KERNING = {"IT": -10, "TH": -10, "LA": -26}
+# "KITHNULA" set in Nasalization (Typodermic Fonts, used under its desktop licence
+# for fixed wordmark artwork) and converted to one outline, so the font itself is
+# not shipped. Font units: baseline at y=0, cap height 675.
+WORDMARK_PATH = "M82 -675V0H200V-282H265C392 -282 416 -272 453 -200L556 0H688L579 -212C539 -290 508 -325 445 -342C500 -366 532 -405 562 -465L668 -675H541L438 -473C400 -399 381 -389 265 -389H200V-675ZM790 -675V0H908V-675ZM1018 -675V-557H1215V0H1334V-557H1531V-675ZM1642 -675V0H1760V-282H2105V0H2224V-675H2105V-400H1760V-675ZM2504 -534C2504 -558 2518 -573 2545 -573C2566 -573 2578 -564 2587 -544L2784 -113C2812 -36 2855 12 2949 12C3053 12 3104 -47 3104 -136V-675H2985V-141C2985 -118 2970 -103 2945 -103C2923 -103 2910 -115 2902 -131L2705 -562C2677 -639 2635 -687 2541 -687C2436 -687 2386 -628 2386 -540V0H2504ZM3261 -675V-215C3261 -73 3335 0 3479 0H3621C3765 0 3840 -73 3840 -215V-675H3724V-224C3724 -157 3689 -118 3613 -118H3493C3415 -118 3381 -157 3381 -224V-675ZM3991 -675V-233C3991 -98 4061 0 4240 0H4509V-118H4247C4141 -118 4109 -169 4109 -234V-675ZM4901 -543C4908 -559 4919 -566 4935 -566C4951 -566 4962 -559 4968 -543L5173 0H5304L5076 -600C5052 -663 5006 -687 4936 -687C4865 -687 4819 -663 4794 -600L4557 0H4687Z"
+WORDMARK_BOUNDS = (82, -687, 5304, 12)
 
 
 # ---------------------------------------------------------------- data
@@ -207,21 +194,12 @@ def moon_path(cx, cy, r, phase):
     return f"M{top}A{r} {r} 0 0 0 {bottom}A{rx:.2f} {r} 0 0 {sweep} {top}z"
 
 
-def wordmark(text, x, y, scale):
-    parts, cx = [], 0
-    for i, ch in enumerate(text):
-        w, d = LETTERS[ch]
-        parts.append(f'<path transform="translate({cx + LETTER_STROKE / 2})" d="{d}"/>')
-        cx += w + LETTER_STROKE + LETTER_GAP + KERNING.get(text[i:i + 2], 0)
-    width = (cx - LETTER_GAP) * scale
-    top, bottom = 10 - LETTER_STROKE / 2, 90 + LETTER_STROKE / 2
-    # The blur + alpha threshold slightly softens every corner, like the printed worm.
-    return (f'<defs><clipPath id="cap"><rect x="-40" y="{top}" width="{cx + 80}" height="{bottom - top}"/></clipPath>'
-            f'<filter id="soft" x="-5%" y="-10%" width="110%" height="120%"><feGaussianBlur stdDeviation="1.8"/>'
-            f'<feColorMatrix values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 24 -11"/></filter></defs>'
-            f'<g transform="translate({x - width / 2:.1f} {y}) scale({scale})"><g filter="url(#soft)">'
-            f'<g clip-path="url(#cap)" fill="none" stroke="{RED}" stroke-width="{LETTER_STROKE}" '
-            f'stroke-linejoin="round">{"".join(parts)}</g></g></g>')
+def wordmark(cx, cy, width):
+    """Places the wordmark outline centred on (cx, cy), scaled to the given width."""
+    x0, y0, x1, y1 = WORDMARK_BOUNDS
+    k = width / (x1 - x0)
+    tx, ty = cx - (x0 + x1) / 2 * k, cy - (y0 + y1) / 2 * k
+    return f'<path transform="translate({tx:.1f} {ty:.1f}) scale({k:.5f})" fill="{RED}" d="{WORDMARK_PATH}"/>'
 
 
 # ---------------------------------------------------------------- visuals
@@ -252,7 +230,7 @@ def header():
   <path d="{back}" fill="none" stroke="url(#orbit)" stroke-width="2"/>
   <circle class="sat" r="4" fill="#fff"><animateMotion dur="16s" repeatCount="indefinite" path="{orbit}"/></circle>
 </g>
-{wordmark("KITHNULA", cx, 108, 1.22)}
+{wordmark(cx, cy, 900)}
 <g transform="rotate(-7 {cx} {cy})"><path d="{front}" fill="none" stroke="url(#orbit)" stroke-width="2.5"/></g>
 <text class="t" x="{cx}" y="308" text-anchor="middle" fill="#fff" font-size="19" letter-spacing="9">{escape(NAME.upper())}</text>
 <text class="m" x="{cx}" y="340" text-anchor="middle" fill="{LILAC}" font-size="13" letter-spacing="3">{escape(TAGLINE)}</text>
