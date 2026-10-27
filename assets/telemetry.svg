@@ -34,7 +34,7 @@
 <circle cx="1040" cy="116" r="112.2" fill="url(#halo)"/>
 <circle cx="1040" cy="116" r="80" fill="none" stroke="#2c1d4a" stroke-dasharray="2 6"/>
 <circle cx="1040" cy="116" r="66" fill="#140c26"/>
-<path d="M1040 50A66 66 0 0 0 1040 182A64.24 66 0 0 0 1040 50z" fill="url(#lit)"/>
+<path d="M1040 50A66 66 0 0 0 1040 182A64.23 66 0 0 0 1040 50z" fill="url(#lit)"/>
 <g fill="#000" opacity=".07"><circle cx="1018" cy="100" r="12"/><circle cx="1060" cy="138" r="8"/><circle cx="1048" cy="82" r="5"/><circle cx="1008" cy="140" r="6"/></g>
 <text class="m" x="1040" y="222" text-anchor="middle" fill="#8b7fb0" font-size="11" letter-spacing="2.5">MOON TONIGHT</text>
 <text class="b" x="1040" y="246" text-anchor="middle" fill="#fff" font-size="17" font-weight="700">Full moon · 99%</text>

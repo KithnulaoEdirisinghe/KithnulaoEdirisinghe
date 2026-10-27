@@ -52,18 +52,21 @@ DIM = "#8b7fb0"
 LINE = "#2c1d4a"
 
 LETTER_STROKE = 18
-# Rounded, single-weight letters in the spirit of 1970s space-agency lettering.
-# Centreline paths on a 0..100 tall grid.
+# Single-weight letters in the spirit of 1970s space-agency lettering.
+# Centreline paths on a 0..100 tall grid; diagonals overshoot and are clipped flat
+# to the cap height and baseline. Widths are the centreline extent.
 LETTERS = {
-    "K": (60, "M0 10V90M58 10L10 56M27 40L60 90"),
+    "K": (62, "M0 10V90M70 -8L12 50L72 108"),
     "I": (0, "M0 10V90"),
     "T": (64, "M0 10H64M32 10V90"),
     "H": (60, "M0 10V90M60 10V90M0 50H60"),
     "N": (60, "M0 90V26Q0 6 12 22L48 78Q60 94 60 74V10"),
     "U": (60, "M0 10V60A30 30 0 0 0 60 60V10"),
     "L": (54, "M0 10V90H54"),
-    "A": (64, "M0 90L27 19Q32 6 37 19L64 90"),
+    "A": (64, "M-6 108L27 19Q32 6 37 19L70 108"),
 }
+# Optical spacing adjustments between letter pairs (open shapes sit closer).
+KERNING = {"KI": 4, "IT": -6, "TH": -6, "LA": -20}
 
 
 # ---------------------------------------------------------------- data
@@ -204,13 +207,16 @@ def moon_path(cx, cy, r, phase):
 
 def wordmark(text, x, y, scale):
     parts, cx = [], 0
-    for ch in text:
+    for i, ch in enumerate(text):
         w, d = LETTERS[ch]
         parts.append(f'<path transform="translate({cx + LETTER_STROKE / 2})" d="{d}"/>')
-        cx += w + LETTER_STROKE + 14
+        cx += w + LETTER_STROKE + 14 + KERNING.get(text[i:i + 2], 0)
     width = (cx - 14) * scale
-    return (f'<g transform="translate({x - width / 2:.1f} {y}) scale({scale})" fill="none" stroke="{RED}" '
-            f'stroke-width="{LETTER_STROKE}" stroke-linejoin="round">{"".join(parts)}</g>')
+    top, bottom = 10 - LETTER_STROKE / 2, 90 + LETTER_STROKE / 2
+    return (f'<defs><clipPath id="cap"><rect x="-40" y="{top}" width="{cx + 80}" height="{bottom - top}"/></clipPath></defs>'
+            f'<g transform="translate({x - width / 2:.1f} {y}) scale({scale})">'
+            f'<g clip-path="url(#cap)" fill="none" stroke="{RED}" stroke-width="{LETTER_STROKE}" '
+            f'stroke-linejoin="miter">{"".join(parts)}</g></g>')
 
 
 # ---------------------------------------------------------------- visuals
