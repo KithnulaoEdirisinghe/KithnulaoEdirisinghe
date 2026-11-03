@@ -23,6 +23,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install numpy pillow
       # PROFILE_TOKEN (a personal access token with repo read access) lets the star chart
       # and TARS count commits in private repos; without it those keep their last values.
       - run: python scripts/build_profile.py

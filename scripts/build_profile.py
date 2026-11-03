@@ -4,7 +4,9 @@
 GitHub READMEs can't set fonts or backgrounds, so the decorative parts (header,
 dividers, TARS briefing, telemetry, featured mission, star chart) are SVGs with the
 fonts embedded. Everything people read or click lives in README.md as markdown.
-It also writes assets/data.json, which the Ask TARS replies read.
+Imagery comes from renders in assets/render/ (scripts/render_space.py and
+scripts/render_tars.py); the moon is rendered fresh on every run. It also writes
+assets/data.json and refreshes the TARS questions in README.md.
 
 Run locally:
     PROFILE_TOKEN=$(gh auth token) python scripts/build_profile.py
@@ -13,15 +15,23 @@ read the private repos you contribute to; without it, the per-repo star chart an
 TARS's repo line keep their last values.
 """
 import base64
+import io
 import json
 import math
 import os
 import random
+import re
 import textwrap
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from html import escape
+
+import numpy as np
+from PIL import Image
+
+import tars_reply
+from render_space import fbm
 
 USER = "KithnulaoEdirisinghe"
 NAME = "Kithnula Edirisinghe"
@@ -67,6 +77,18 @@ TARS_JOKES = [
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 ASSETS = os.path.join(ROOT, "assets")
 DATA_PATH = os.path.join(ASSETS, "data.json")
+RENDER = os.path.join(ASSETS, "render")
+README = os.path.join(ROOT, "README.md")
+# Questions visitors can open under TARS in the README; answers are refreshed every run.
+TARS_QUESTIONS = [
+    "What is Kithnula building?",
+    "What's his tech stack?",
+    "How active has he been?",
+    "What's in the sky tonight?",
+    "How long is that on Miller's planet?",
+    "Tell me a joke.",
+    "How do I reach him?",
+]
 
 W = 1200
 # palette, taken from Gargantua: warm near-black, bronze and amber disk light, cream-white core
@@ -99,8 +121,13 @@ def gh(path, body=None):
                                  headers={"Accept": "application/vnd.github+json"})
     if token():
         req.add_header("Authorization", f"Bearer {token()}")
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    for attempt in range(3):  # the API occasionally drops connections
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.load(r)
+        except (urllib.error.URLError, ConnectionError) as e:
+            if isinstance(e, urllib.error.HTTPError) or attempt == 2:
+                raise
 
 
 def commit_count(repo, since):
@@ -221,11 +248,31 @@ def font_css():
 FONT_CSS = None
 
 
-def svg(h, body, title, seed, nebulas=(), extra_css="", w=W, star_density=3200):
-    """Wraps body in a framed panel: indigo-to-black gradient, nebula glows, stars."""
+def data_uri(img, fmt="JPEG", **options):
+    buf = io.BytesIO()
+    img.save(buf, fmt, **options)
+    mime = {"JPEG": "image/jpeg", "WEBP": "image/webp", "PNG": "image/png"}[fmt]
+    return f"data:{mime};base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+_SPACE = None
+
+
+def space_bg(w, h, seed):
+    """A w x h slice of the rendered space texture, as an <image>."""
+    global _SPACE
+    if _SPACE is None:
+        _SPACE = Image.open(os.path.join(RENDER, "space.jpg")).convert("RGB")
+    src = _SPACE if _SPACE.width == w else _SPACE.resize((w, round(_SPACE.height * w / _SPACE.width)))
+    y = (seed * 137) % max(1, src.height - h)
+    crop = src.crop((0, y, w, y + h))
+    return f'<image width="{w}" height="{h}" href="{data_uri(crop, quality=78, optimize=True, progressive=True)}"/>'
+
+
+def svg(h, body, title, seed, nebulas=(), extra_css="", w=W, background=None):
+    """Wraps body in a framed panel over a slice of the space render (or a given background)."""
     global FONT_CSS
     FONT_CSS = FONT_CSS or font_css()
-    rnd = random.Random(seed)
     glows = "".join(
         f'<radialGradient id="n{i}" cx="{cx}%" cy="{cy}%" r="{r}%"><stop offset="0" stop-color="{c}" stop-opacity="{o}"/>'
         f'<stop offset="1" stop-color="{c}" stop-opacity="0"/></radialGradient>'
@@ -238,40 +285,23 @@ def svg(h, body, title, seed, nebulas=(), extra_css="", w=W, star_density=3200):
 .t{{font-family:'Michroma','Segoe UI',sans-serif}}
 .b{{font-family:'Space Grotesk','Segoe UI',sans-serif}}
 .m{{font-family:'JetBrains Mono',Consolas,monospace}}
-.tw{{animation:tw 3s ease-in-out infinite}}
-@keyframes tw{{50%{{opacity:.1}}}}
 {extra_css}
-@media (prefers-reduced-motion:reduce){{*{{animation:none!important}}.sat,.cover{{display:none}}}}
+@media (prefers-reduced-motion:reduce){{*{{animation:none!important}}.cover{{display:none}}}}
 </style>
 <defs>
   <clipPath id="frame"><rect width="{w}" height="{h}" rx="18"/></clipPath>
-  <linearGradient id="base" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="{DEEP}"/><stop offset=".55" stop-color="#0c0805"/><stop offset="1" stop-color="{INK}"/></linearGradient>
   <linearGradient id="rule" x1="0" x2="1"><stop offset="0" stop-color="{AMBER}" stop-opacity=".75"/><stop offset="1" stop-color="{EMBER}" stop-opacity="0"/></linearGradient>
   {glows}
 </defs>
 <g clip-path="url(#frame)">
-<rect width="{w}" height="{h}" fill="url(#base)"/>
+<rect width="{w}" height="{h}" fill="{INK}"/>
+{background or space_bg(w, h, seed)}
 {glow_rects}
-{stars(rnd, w, h, int(w * h / star_density))}
 {body}
 </g>
 <rect x=".5" y=".5" width="{w - 1}" height="{h - 1}" rx="18" fill="none" stroke="{LINE}"/>
 </svg>
 """
-
-
-def stars(rnd, w, h, count, twinkle=0.25):
-    out = []
-    for _ in range(count):
-        x, y = rnd.uniform(0, w), rnd.uniform(0, h)
-        r = rnd.choice([0.5, 0.6, 0.8, 0.8, 1, 1.3, 1.7])
-        o = rnd.uniform(0.25, 0.9)
-        anim = ""
-        if rnd.random() < twinkle:
-            anim = (f' class="tw" style="animation-delay:{rnd.uniform(0, 4):.1f}s;'
-                    f'animation-duration:{rnd.uniform(2.5, 5):.1f}s"')
-        out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="#fff" opacity="{o:.2f}"{anim}/>')
-    return "".join(out)
 
 
 def lines(x, y, text_lines, size, color, cls="b", lh=None):
@@ -287,15 +317,25 @@ def chip(x, y, label):
             f'letter-spacing="1.5">{escape(label)}</text>'), w
 
 
-def moon_path(cx, cy, r, phase):
-    """Lit region of the moon (waxing = lit on the right)."""
-    rx = abs(math.cos(2 * math.pi * phase)) * r
-    top, bottom = f"{cx} {cy - r}", f"{cx} {cy + r}"
-    if phase < 0.5:
-        sweep = 0 if phase < 0.25 else 1
-        return f"M{top}A{r} {r} 0 0 1 {bottom}A{rx:.2f} {r} 0 0 {sweep} {top}z"
-    sweep = 1 if phase > 0.75 else 0
-    return f"M{top}A{r} {r} 0 0 0 {bottom}A{rx:.2f} {r} 0 0 {sweep} {top}z"
+def render_moon(phase, size):
+    """Moon with maria, craters and the real terminator for this phase, as an RGBA image."""
+    y, x = (np.mgrid[0:size, 0:size].astype(np.float32) + 0.5) / size * 2 - 1
+    d = np.sqrt(x ** 2 + y ** 2)
+    nz = np.sqrt(np.clip(1 - d ** 2, 0, 1))
+    theta = 2 * np.pi * phase  # 0 new, .25 first quarter (lit right), .5 full
+    lambert = np.clip(x * np.sin(theta) - nz * np.cos(theta), 0, 1)
+    maria = np.clip((fbm((size, size), 5, 31, scale=0.4) - 0.52) * 6, 0, 1)
+    detail = fbm((size, size), 7, 47, scale=0.08)
+    albedo = (0.62 + 0.3 * detail) * (1 - 0.38 * maria)
+    rnd = np.random.default_rng(5)
+    for _ in range(26):
+        cx, cy, r = rnd.uniform(-0.8, 0.8), rnd.uniform(-0.8, 0.8), rnd.uniform(0.03, 0.12)
+        dd = np.sqrt((x - cx) ** 2 + (y - cy) ** 2) / r
+        albedo = albedo * (1 - 0.18 * np.exp(-dd ** 4)) + 0.12 * np.exp(-((dd - 1) * 6) ** 2)
+    shade = albedo * (lambert ** 0.85 + 0.035)  # faint earthshine on the dark side
+    rgb = np.stack([shade * 1.0, shade * 0.95, shade * 0.86], -1)
+    alpha = np.clip((1 - d) * size / 2, 0, 1)
+    return Image.fromarray(np.dstack([np.clip(rgb, 0, 1) * 255, alpha * 255]).astype(np.uint8), "RGBA")
 
 
 def wordmark(cx, cy, width, fill):
@@ -306,65 +346,38 @@ def wordmark(cx, cy, width, fill):
     return f'<path transform="translate({tx:.1f} {ty:.1f}) scale({k:.5f})" fill="{fill}" d="{WORDMARK_PATH}"/>'
 
 
-def black_hole(cx, cy, r, ids, tilt=-6):
-    """Gargantua-style black hole: halo, accretion disk behind and in front, lensed arcs, shadow."""
-    a, d, b1, b2, fr = ids
-    return f"""
-<defs>
-  <radialGradient id="{a}" r="50%"><stop offset="0" stop-color="{CREAM}" stop-opacity=".4"/><stop offset=".3" stop-color="{AMBER}" stop-opacity=".24"/><stop offset=".65" stop-color="{EMBER}" stop-opacity=".12"/><stop offset="1" stop-color="{EMBER}" stop-opacity="0"/></radialGradient>
-  <linearGradient id="{d}" x1="0" x2="1"><stop offset="0" stop-color="{AMBER}" stop-opacity="0"/><stop offset=".28" stop-color="{AMBER}" stop-opacity=".75"/><stop offset=".5" stop-color="{CREAM}"/><stop offset=".72" stop-color="{AMBER}" stop-opacity=".75"/><stop offset="1" stop-color="{AMBER}" stop-opacity="0"/></linearGradient>
-  <filter id="{b1}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="{r * .09:.1f}"/></filter>
-  <filter id="{b2}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="{r * .025:.1f}"/></filter>
-  <clipPath id="{fr}"><rect x="{cx - r * 5}" y="{cy}" width="{r * 10}" height="{r * 4}"/></clipPath>
-</defs>
-<circle cx="{cx}" cy="{cy}" r="{r * 3.4:.0f}" fill="url(#{a})"/>
-<g transform="rotate({tilt} {cx} {cy})">
-  <ellipse cx="{cx}" cy="{cy}" rx="{r * 3.6:.0f}" ry="{r * .3:.1f}" fill="url(#{d})" filter="url(#{b1})"/>
-  <ellipse cx="{cx}" cy="{cy}" rx="{r * 3.4:.0f}" ry="{r * .1:.1f}" fill="url(#{d})"/>
-  <path d="M{cx - r * 1.38:.1f} {cy}A{r * 1.38:.1f} {r * 1.25:.1f} 0 0 1 {cx + r * 1.38:.1f} {cy}" fill="none" stroke="{AMBER}" stroke-opacity=".55" stroke-width="{r * .28:.1f}" filter="url(#{b1})"/>
-  <path d="M{cx - r * 1.32:.1f} {cy}A{r * 1.32:.1f} {r * 1.2:.1f} 0 0 1 {cx + r * 1.32:.1f} {cy}" fill="none" stroke="{CREAM}" stroke-width="{r * .09:.1f}" filter="url(#{b2})"/>
-  <path d="M{cx - r * 1.18:.1f} {cy}A{r * 1.18:.1f} {r * 1.02:.1f} 0 0 0 {cx + r * 1.18:.1f} {cy}" fill="none" stroke="{CREAM}" stroke-opacity=".7" stroke-width="{r * .05:.1f}" filter="url(#{b2})"/>
-  <circle cx="{cx}" cy="{cy}" r="{r}" fill="#000"/>
-  <circle cx="{cx}" cy="{cy}" r="{r * 1.02:.1f}" fill="none" stroke="{CREAM}" stroke-opacity=".85" stroke-width="{max(1, r * .025):.1f}"/>
-  <g clip-path="url(#{fr})">
-    <ellipse cx="{cx}" cy="{cy}" rx="{r * 3.6:.0f}" ry="{r * .26:.1f}" fill="url(#{d})" filter="url(#{b1})" opacity=".85"/>
-    <ellipse cx="{cx}" cy="{cy}" rx="{r * 3.4:.0f}" ry="{r * .1:.1f}" fill="url(#{d})"/>
-  </g>
-</g>"""
-
-
 # ---------------------------------------------------------------- visuals
 
 def header():
     H = 400
-    bx, by = 930, 178
-    ex, ey = 760, 84  # Endurance
-    modules = "".join(
-        f'<rect x="-3.5" y="-20" width="7" height="5" rx="1" fill="{CREAM}" transform="rotate({i * 30})"/>' for i in range(12))
-    css = (".shoot{animation:shoot 9s linear 2s infinite;opacity:0}"
-           "@keyframes shoot{0%{transform:translate(560px,40px);opacity:0}2%{opacity:1}"
-           "9%{transform:translate(820px,170px);opacity:0}100%{transform:translate(820px,170px);opacity:0}}")
+    with open(os.path.join(RENDER, "gargantua.jpg"), "rb") as f:
+        bh = base64.b64encode(f.read()).decode()
     body = f"""
 <defs>
   <linearGradient id="wm" x1="0" x2="1"><stop offset="0" stop-color="{CREAM}"/><stop offset=".55" stop-color="#f0c48c"/><stop offset="1" stop-color="{AMBER}"/></linearGradient>
-  <linearGradient id="tail" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="shade" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".5" stop-color="#000" stop-opacity="0"/></linearGradient>
 </defs>
-{black_hole(bx, by, 66, ("gh", "gd", "gb1", "gb2", "gfr"))}
-<g class="shoot"><line x1="0" y1="0" x2="-110" y2="-55" stroke="url(#tail)" stroke-width="2" stroke-linecap="round"/></g>
-<g transform="translate({ex} {ey})">
-  <circle r="17.5" fill="none" stroke="{CREAM}" stroke-opacity=".35"/>
-  <g>{modules}<animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="24s" repeatCount="indefinite"/></g>
-  <circle r="3" fill="{CREAM}"/>
-</g>
-<text class="m" x="{ex + 30}" y="{ey + 4}" fill="{DIM}" font-size="11" letter-spacing="2">ENDURANCE</text>
-{wordmark(380, 150, 620, "url(#wm)")}
-<text class="t" x="72" y="240" fill="#fff" font-size="18" letter-spacing="8">{escape(NAME.upper())}</text>
-<text class="m" x="72" y="272" fill="{SAND}" font-size="13" letter-spacing="3">{escape(TAGLINE)}</text>
+<rect width="{W}" height="{H}" fill="url(#shade)"/>
+{wordmark(370, 150, 600, "url(#wm)")}
+<text class="t" x="72" y="236" fill="#fff" font-size="17" letter-spacing="8">{escape(NAME.upper())}</text>
+<text class="m" x="72" y="268" fill="{SAND}" font-size="13" letter-spacing="3">{escape(TAGLINE)}</text>
 <text class="m" x="28" y="36" fill="{DIM}" font-size="12" letter-spacing="2">LAZARUS PROGRAM  ·  MISSION KE-01</text>
-<text class="m" x="28" y="{H - 24}" fill="{DIM}" font-size="12" letter-spacing="2">GARGANTUA  ·  100 MILLION SOLAR MASSES</text>
+<text class="m" x="28" y="{H - 24}" fill="{DIM}" font-size="12" letter-spacing="2">GARGANTUA  ·  RAY-TRACED SCHWARZSCHILD BLACK HOLE</text>
 <text class="m" x="{W - 28}" y="{H - 24}" text-anchor="end" fill="{DIM}" font-size="12" letter-spacing="2">PER ASPERA AD ASTRA</text>"""
-    return svg(H, body, f"{NAME}: {TAGLINE}", 42, extra_css=css, nebulas=[
-        (78, 40, 45, AMBER, .13), (15, 20, 45, EMBER, .21), (50, 100, 45, DEEP, .36)])
+    background = f'<image width="{W}" height="{H}" href="data:image/jpeg;base64,{bh}"/>'
+    return svg(H, body, f"{NAME}: {TAGLINE}", 42, background=background)
+
+
+_HOLE_ICON = None
+
+
+def hole_icon():
+    """Small crop of the black hole render for the section dividers."""
+    global _HOLE_ICON
+    if _HOLE_ICON is None:
+        crop = Image.open(os.path.join(RENDER, "gargantua.jpg")).crop((980, 150, 1640, 420)).resize((340, 140), Image.LANCZOS)
+        _HOLE_ICON = data_uri(crop, quality=85)
+    return _HOLE_ICON
 
 
 def divider(num, title):
@@ -373,12 +386,13 @@ def divider(num, title):
     title_w = len(title) * (22 * 0.95 + 6)
     rule_x = 92 + title_w + 24
     body = f"""
+<defs><radialGradient id="fade" r="50%"><stop offset=".55" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<mask id="feather"><rect x="{W - 190}" y="0" width="170" height="{H}" fill="url(#fade)"/></mask></defs>
 <text class="m" x="40" y="51" fill="{AMBER}" font-size="14" letter-spacing="3">{num}</text>
 <text class="t" x="88" y="53" fill="#fff" font-size="22" letter-spacing="6">{escape(title)}</text>
-<rect x="{rule_x:.0f}" y="45" width="{max(0, W - 130 - rule_x):.0f}" height="1" fill="url(#rule)"/>
-{black_hole(W - 72, 45, 9, (f"dh{num}", f"dd{num}", f"db1{num}", f"db2{num}", f"dfr{num}"))}"""
-    return svg(H, body, title.title(), int(num) * 13, star_density=1800,
-               nebulas=[(85, 50, 40, AMBER, .11), (10, 50, 30, EMBER, .15)])
+<rect x="{rule_x:.0f}" y="45" width="{max(0, W - 200 - rule_x):.0f}" height="1" fill="url(#rule)"/>
+<image x="{W - 190}" y="7" width="170" height="70" href="{hole_icon()}" mask="url(#feather)"/>"""
+    return svg(H, body, title.title(), int(num) * 13)
 
 
 def tars(stats, activity, now):
@@ -402,8 +416,7 @@ def tars(stats, activity, now):
     tx, ty = px + 28, py + 84
     css = ["@keyframes blink{50%{opacity:0}}.caret{animation:blink 1s steps(1) infinite}",
            ".s{animation:show .01s both}@keyframes show{from{opacity:0}to{opacity:1}}",
-           "@keyframes sway{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}",
-           ".sl1{animation:sway 4s ease-in-out infinite}.sl2{animation:sway 4s ease-in-out 2s infinite}"]
+           "@keyframes glow{0%,100%{opacity:.55}50%{opacity:.85}}.rim{animation:glow 5s ease-in-out infinite}"]
     text, t = [], 0.6
     for i, line in enumerate(briefing):
         y = ty + i * lh
@@ -422,23 +435,15 @@ def tars(stats, activity, now):
     text.append(f'<g class="s" style="animation-delay:{t:.2f}s"><text class="m" x="{tx}" y="{caret_y}" fill="{AMBER}" '
                 f'font-size="{size}">&gt;</text><rect class="caret" x="{tx + 22}" y="{caret_y - 14}" width="9" height="17" fill="{GOLD}"/></g>')
 
-    # TARS: four articulated slabs with a small display, swaying slightly
-    slabs = []
-    for i in range(4):
-        x = 78 + i * 51
-        cls = ' class="sl1"' if i == 1 else (' class="sl2"' if i == 2 else "")
-        slabs.append(
-            f'<g{cls}><rect x="{x}" y="88" width="47" height="250" rx="2" fill="url(#metal)" stroke="#2b2f45"/>'
-            f'<line x1="{x}" y1="214" x2="{x + 47}" y2="214" stroke="#2b2f45" stroke-width="2"/>'
-            f'<line x1="{x + 6}" y1="96" x2="{x + 6}" y2="330" stroke="#fff" stroke-opacity=".08"/></g>')
+    # TARS: Cycles render from scripts/render_tars.py, standing in a pool of warm light
+    render = Image.open(os.path.join(RENDER, "tars.png")).convert("RGBA")
+    rh = 340
+    rw = round(render.width * rh / render.height)
+    tars_img = data_uri(render.resize((rw * 2, rh * 2), Image.LANCZOS), "WEBP", quality=88, method=6)
     robot = f"""
-<defs><linearGradient id="metal" x1="0" x2="1"><stop offset="0" stop-color="#c7cbd8"/><stop offset=".5" stop-color="#8a90a6"/><stop offset="1" stop-color="#b3b8c8"/></linearGradient>
-<radialGradient id="floor" r="50%"><stop offset="0" stop-color="{EMBER}" stop-opacity=".45"/><stop offset="1" stop-color="{EMBER}" stop-opacity="0"/></radialGradient></defs>
-<ellipse cx="180" cy="346" rx="140" ry="16" fill="url(#floor)"/>
-{"".join(slabs)}
-<rect x="133" y="108" width="94" height="34" rx="3" fill="#090706" stroke="#2b2f45"/>
-<text class="m" x="146" y="131" fill="{GOLD}" font-size="14" letter-spacing="3">TARS</text>
-<circle class="caret" cx="212" cy="125" r="3.5" fill="{GOLD}"/>"""
+<defs><radialGradient id="floor" r="50%"><stop offset="0" stop-color="{AMBER}" stop-opacity=".35"/><stop offset="1" stop-color="{AMBER}" stop-opacity="0"/></radialGradient></defs>
+<ellipse class="rim" cx="{60 + rw / 2:.0f}" cy="{48 + rh - 8}" rx="150" ry="22" fill="url(#floor)"/>
+<image x="60" y="48" width="{rw}" height="{rh}" href="{tars_img}"/>"""
     body = f"""
 {robot}
 <rect x="{px}" y="{py}" width="{pw}" height="{ph}" rx="14" fill="{panel_fill}" stroke="{GOLD}" stroke-opacity=".35"/>
@@ -448,7 +453,7 @@ def tars(stats, activity, now):
 {"".join(text)}
 <text class="m" x="{px}" y="{H - 30}" fill="{DIM}" font-size="11" letter-spacing="2">UPDATED {now:%d %b %Y  ·  %H:%M} UTC  ·  ASK TARS BELOW</text>"""
     return svg(H, body, "TARS daily briefing. " + " ".join(briefing), 77, extra_css="\n".join(css),
-               nebulas=[(15, 80, 35, EMBER, .21), (90, 10, 35, AMBER, .09)])
+               nebulas=[(15, 80, 35, EMBER, .18)])
 
 
 def telemetry(stats, now):
@@ -471,8 +476,7 @@ def telemetry(stats, now):
             f'<text class="b" x="{x + 20}" y="198" fill="{SAND}" font-size="14">{caption}</text>')
     css = ".live{animation:live 1.6s ease-in-out infinite}@keyframes live{50%{opacity:.25}}"
     body = f"""
-<defs><radialGradient id="lit" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="{CREAM}"/><stop offset="1" stop-color="#b9a68a"/></radialGradient>
-<radialGradient id="halo" r="50%"><stop offset=".6" stop-color="{AMBER}" stop-opacity=".22"/><stop offset="1" stop-color="{AMBER}" stop-opacity="0"/></radialGradient></defs>
+<defs><radialGradient id="halo" r="50%"><stop offset=".6" stop-color="{CREAM}" stop-opacity=".12"/><stop offset="1" stop-color="{CREAM}" stop-opacity="0"/></radialGradient></defs>
 <circle class="live" cx="46" cy="44" r="5" fill="{GOLD}"/>
 <text class="m" x="60" y="49" fill="#fff" font-size="13" letter-spacing="3">LIVE TELEMETRY</text>
 <text class="m" x="882" y="49" text-anchor="end" fill="{DIM}" font-size="12" letter-spacing="1.5">T+{stats['days']} DAYS SINCE LAUNCH</text>
@@ -480,9 +484,7 @@ def telemetry(stats, now):
 <text class="m" x="40" y="268" fill="{DIM}" font-size="11" letter-spacing="2">UPDATED {now:%d %b %Y  ·  %H:%M} UTC  ·  LIVE FROM GITHUB</text>
 <circle cx="{mx}" cy="{my}" r="{mr * 1.7}" fill="url(#halo)"/>
 <circle cx="{mx}" cy="{my}" r="{mr + 14}" fill="none" stroke="{LINE}" stroke-dasharray="2 6"/>
-<circle cx="{mx}" cy="{my}" r="{mr}" fill="#120c07"/>
-<path d="{moon_path(mx, my, mr, phase)}" fill="url(#lit)"/>
-<g fill="{DEEP}" opacity=".12"><circle cx="{mx - 22}" cy="{my - 16}" r="12"/><circle cx="{mx + 20}" cy="{my + 22}" r="8"/><circle cx="{mx + 8}" cy="{my - 34}" r="5"/><circle cx="{mx - 32}" cy="{my + 24}" r="6"/></g>
+<image x="{mx - mr}" y="{my - mr}" width="{mr * 2}" height="{mr * 2}" href="{data_uri(render_moon(phase, mr * 4), 'PNG', optimize=True)}"/>
 <text class="m" x="{mx}" y="222" text-anchor="middle" fill="{DIM}" font-size="11" letter-spacing="2.5">MOON TONIGHT</text>
 <text class="b" x="{mx}" y="246" text-anchor="middle" fill="#fff" font-size="17" font-weight="700">{phase_name} · {round(lit * 100)}%</text>
 <text class="m" x="{mx}" y="270" text-anchor="middle" fill="{DIM}" font-size="11" letter-spacing="1">FULL {next_full:%d %b} · NEW {next_new:%d %b}</text>"""
@@ -605,11 +607,24 @@ if __name__ == "__main__":
     write("mission-featured.svg", featured(stats))
     if activity:
         write("star-chart.svg", star_chart(activity, now))
-    write("data.json", json.dumps({
+    data = {
         "updated": f"{now:%Y-%m-%dT%H:%MZ}",
         "stats": stats,
         "activity": activity,
         "moon": {"name": phase_name, "lit": round(lit * 100), "next_full": f"{next_full:%d %b}",
                  "next_new": f"{next_new:%d %b}"},
         "miller": miller_time(stats["days"]),
-    }, indent=2) + "\n")
+    }
+    write("data.json", json.dumps(data, indent=2) + "\n")
+
+    # TARS answers on the page: each question expands in place, no link out
+    rnd = random.Random(now.toordinal())
+    block = "\n".join(
+        f"<details>\n<summary><b>{escape(q, quote=False)}</b></summary>\n\n> **TARS:** {tars_reply.answer(q, data, rnd)}\n\n</details>"
+        for q in TARS_QUESTIONS)
+    with open(README, encoding="utf-8") as f:
+        readme = f.read()
+    readme = re.sub(r"(<!-- TARS:START -->).*?(<!-- TARS:END -->)", lambda m: f"{m[1]}\n{block}\n{m[2]}", readme, flags=re.S)
+    with open(README, "w", encoding="utf-8", newline="\n") as f:
+        f.write(readme)
+    print("updated TARS answers in README.md")

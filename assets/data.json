@@ -1,11 +1,11 @@
 {
-  "updated": "2026-11-03T11:16Z",
+  "updated": "2026-11-03T13:36Z",
   "stats": {
     "repos": 3,
     "followers": 6,
     "stars": 3,
-    "contribs": 459,
-    "week": 68,
+    "contribs": 462,
+    "week": 71,
     "streak": 2,
     "longest": 20,
     "days": 144,
@@ -58,8 +58,8 @@
       {
         "name": "profile",
         "private": false,
-        "commits": 6,
-        "week": 0
+        "commits": 7,
+        "week": 1
       },
       {
         "name": "classified",
@@ -89,53 +89,53 @@
     "languages": [
       {
         "name": "Luau",
-        "share": 0.28582563240104436
+        "share": 0.28510385050104176
       },
       {
         "name": "C#",
-        "share": 0.2814221277040353
+        "share": 0.28071146576538875
       },
       {
         "name": "Python",
-        "share": 0.16007184329798463
+        "share": 0.1621928739967271
       },
       {
         "name": "HTML",
-        "share": 0.085392927710182
+        "share": 0.08517728900384317
       },
       {
         "name": "Java",
-        "share": 0.08337258179769902
+        "share": 0.08316204497497755
       },
       {
         "name": "TypeScript",
-        "share": 0.07549470576121572
+        "share": 0.07530406256484902
       },
       {
         "name": "JavaScript",
-        "share": 0.018913667769220464
+        "share": 0.01886590598192445
       },
       {
         "name": "Rust",
-        "share": 0.007407588387089166
+        "share": 0.007388882355808637
       },
       {
         "name": "Groovy",
-        "share": 0.0008228597145652132
+        "share": 0.0008207817859930788
       },
       {
         "name": "Wolfram Language",
-        "share": 0.0007770136238852603
+        "share": 0.0007750514682693885
       },
       {
         "name": "CSS",
-        "share": 0.0004990518330788689
+        "share": 0.0004977916011771546
       }
     ]
   },
   "moon": {
     "name": "Last quarter",
-    "lit": 40,
+    "lit": 39,
     "next_full": "24 Nov",
     "next_new": "09 Nov"
   },
