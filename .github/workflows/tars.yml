@@ -1,0 +1,28 @@
+name: Ask TARS
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  reply:
+    # Only issues titled "TARS: ..." (any case); everything else is left alone.
+    if: startsWith(github.event.issue.title, 'TARS') || startsWith(github.event.issue.title, 'tars') || startsWith(github.event.issue.title, 'Tars')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Visitor text is passed through environment variables, never interpolated into the shell.
+      - run: python scripts/tars_reply.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}

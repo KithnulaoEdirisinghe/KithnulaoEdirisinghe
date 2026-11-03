@@ -1,0 +1,143 @@
+{
+  "updated": "2026-11-03T11:15Z",
+  "stats": {
+    "repos": 3,
+    "followers": 6,
+    "stars": 3,
+    "contribs": 459,
+    "week": 68,
+    "streak": 2,
+    "longest": 20,
+    "days": 144,
+    "featured_stars": 2
+  },
+  "activity": {
+    "repos": [
+      {
+        "name": "tick-talk",
+        "private": true,
+        "commits": 160,
+        "week": 0
+      },
+      {
+        "name": "orerivals",
+        "private": true,
+        "commits": 118,
+        "week": 72
+      },
+      {
+        "name": "rewards",
+        "private": true,
+        "commits": 41,
+        "week": 2
+      },
+      {
+        "name": "CM1601 Java",
+        "private": false,
+        "commits": 32,
+        "week": 0
+      },
+      {
+        "name": "Live-Wallpaper",
+        "private": false,
+        "commits": 11,
+        "week": 0
+      },
+      {
+        "name": "classified",
+        "private": true,
+        "commits": 10,
+        "week": 0
+      },
+      {
+        "name": "AiSleep",
+        "private": false,
+        "commits": 8,
+        "week": 0
+      },
+      {
+        "name": "profile",
+        "private": false,
+        "commits": 6,
+        "week": 0
+      },
+      {
+        "name": "classified",
+        "private": true,
+        "commits": 4,
+        "week": 0
+      },
+      {
+        "name": "MicBridge",
+        "private": false,
+        "commits": 3,
+        "week": 0
+      },
+      {
+        "name": "classified",
+        "private": true,
+        "commits": 1,
+        "week": 0
+      },
+      {
+        "name": "classified",
+        "private": true,
+        "commits": 1,
+        "week": 0
+      }
+    ],
+    "languages": [
+      {
+        "name": "Luau",
+        "share": 0.28582563240104436
+      },
+      {
+        "name": "C#",
+        "share": 0.2814221277040353
+      },
+      {
+        "name": "Python",
+        "share": 0.16007184329798463
+      },
+      {
+        "name": "HTML",
+        "share": 0.085392927710182
+      },
+      {
+        "name": "Java",
+        "share": 0.08337258179769902
+      },
+      {
+        "name": "TypeScript",
+        "share": 0.07549470576121572
+      },
+      {
+        "name": "JavaScript",
+        "share": 0.018913667769220464
+      },
+      {
+        "name": "Rust",
+        "share": 0.007407588387089166
+      },
+      {
+        "name": "Groovy",
+        "share": 0.0008228597145652132
+      },
+      {
+        "name": "Wolfram Language",
+        "share": 0.0007770136238852603
+      },
+      {
+        "name": "CSS",
+        "share": 0.0004990518330788689
+      }
+    ]
+  },
+  "moon": {
+    "name": "Last quarter",
+    "lit": 40,
+    "next_full": "24 Nov",
+    "next_new": "09 Nov"
+  },
+  "miller": "3 min 22 s"
+}

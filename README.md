@@ -1,6 +1,6 @@
 <img src="./assets/header.svg" width="100%" alt="Kithnula Edirisinghe: AI & Data Science undergrad at IIT, building Windows apps, games and web stuff" />
 
-<img src="./assets/divider-01.svg" width="100%" alt="01 Mission profile" />
+<img src="./assets/divider-01.svg" width="100%" alt="01 Crew profile" />
 
 ### Hey, I'm Kithnula.
 
@@ -12,7 +12,13 @@ AI & Data Science undergrad at **IIT**. I build Windows apps, games and things f
 
 <img src="./assets/telemetry.svg" width="100%" alt="Live GitHub stats and tonight's moon phase" />
 
-<img src="./assets/divider-02.svg" width="100%" alt="02 Mission log" />
+<img src="./assets/divider-02.svg" width="100%" alt="02 TARS" />
+
+<img src="./assets/tars.svg" width="100%" alt="TARS daily briefing with live stats, the moon and a joke" />
+
+**Ask TARS anything.** [Open a transmission](https://github.com/KithnulaoEdirisinghe/KithnulaoEdirisinghe/issues/new?title=TARS%3A%20&body=Write%20your%20question%20in%20the%20title%20after%20%22TARS%3A%22.) with a title like `TARS: what are you building?` and he replies within a minute. Try asking about projects, stack, stats, the moon, Miller's planet, or for a joke.
+
+<img src="./assets/divider-03.svg" width="100%" alt="03 Lazarus missions" />
 
 <a href="https://github.com/KithnulaoEdirisinghe/MicBridge"><img src="./assets/mission-featured.svg" width="100%" alt="Featured mission: MicBridge. Turns an Android phone into a wireless microphone for a Windows PC." /></a>
 
@@ -25,18 +31,18 @@ AI & Data Science undergrad at **IIT**. I build Windows apps, games and things f
 | **OreRivals** <sub>private</sub> | Luau · Roblox | [@niamatmarjan](https://github.com/niamatmarjan) |
 | **Rewards** <sub>private</sub> | TypeScript | [@thahaniazmi](https://github.com/thahaniazmi) |
 
-<img src="./assets/divider-03.svg" width="100%" alt="03 Payload" />
+<img src="./assets/divider-04.svg" width="100%" alt="04 Star chart" />
 
-<img src="./assets/payload.svg" width="100%" alt="Tech stack star chart: C#, Python, TypeScript, Java, Luau, .NET, Unity, Roblox Studio, Blender, Android" />
+<img src="./assets/star-chart.svg" width="100%" alt="Live star chart of the languages and repos I've committed to most in the last 12 months" />
 
-<img src="./assets/divider-04.svg" width="100%" alt="04 Ground control" />
+<img src="./assets/divider-05.svg" width="100%" alt="05 Comms" />
 
 Open a channel. I'm always up for talking code, game dev or the night sky.
 
 <p>
-  <a href="mailto:kithnulaedirisinghe@gmail.com"><img src="https://img.shields.io/badge/Email-kithnulaedirisinghe%40gmail.com-7b2ff7?style=for-the-badge&logo=gmail&logoColor=white&labelColor=1b0b35" alt="Email kithnulaedirisinghe@gmail.com" /></a>
-  <img src="https://img.shields.io/badge/Discord-kithnula-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=1b0b35" alt="Discord kithnula" />
-  <a href="https://github.com/KithnulaoEdirisinghe/MicBridge"><img src="https://img.shields.io/badge/Try-MicBridge-fc3d21?style=for-the-badge&logo=github&logoColor=white&labelColor=1b0b35" alt="Try MicBridge" /></a>
+  <a href="mailto:kithnulaedirisinghe@gmail.com"><img src="https://img.shields.io/badge/Email-kithnulaedirisinghe%40gmail.com-8A5A32?style=for-the-badge&logo=gmail&logoColor=white&labelColor=0C0805" alt="Email kithnulaedirisinghe@gmail.com" /></a>
+  <img src="https://img.shields.io/badge/Discord-kithnula-5A4330?style=for-the-badge&logo=discord&logoColor=white&labelColor=0C0805" alt="Discord kithnula" />
+  <a href="https://github.com/KithnulaoEdirisinghe/MicBridge"><img src="https://img.shields.io/badge/Try-MicBridge-C97B35?style=for-the-badge&logo=github&logoColor=white&labelColor=0C0805" alt="Try MicBridge" /></a>
 </p>
 
-<p align="center"><sub>Stats and moon phase update daily · Per aspera ad astra</sub></p>
+<p align="center"><sub>Telemetry, TARS and the star chart update every 3 hours · Per aspera ad astra</sub></p>
