@@ -1,16 +1,25 @@
-"""Renders assets/render/tars.png: a TARS-style robot in Cycles (run once; the result is committed).
+"""Renders assets/render/<palette>/tars.png: a TARS-style robot in Cycles (run once; committed).
 
-    blender -b --factory-startup -P scripts/render_tars.py
+    blender -b --factory-startup -P scripts/render_tars.py -- [gargantua|purple] [output.png]
 
 Four brushed-aluminium slabs, each split at the hip, with bevelled edges, screws,
-vents and a small display, lit by warm area lights on a transparent background.
+panel seams and a small display, lit by area lights on a transparent background.
 """
 import math
 import os
+import sys
 
 import bpy
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "render", "tars.png")
+ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+PALETTE = ARGS[0] if ARGS else "gargantua"
+# key and rim light colours per palette
+LIGHTS = {
+    "gargantua": {"key": (1.0, 0.84, 0.66), "rim": (1.0, 0.6, 0.28)},
+    "purple": {"key": (0.86, 0.8, 1.0), "rim": (0.85, 0.3, 1.0)},
+}[PALETTE]
+OUT = ARGS[1] if len(ARGS) > 1 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "render",
+                                                   PALETTE, "tars.png")
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -130,8 +139,8 @@ def area(name, loc, rot, power, color, size):
     return l
 
 
-area("key", (-2.2, -2.4, 2.6), (math.radians(55), 0, math.radians(-42)), 380, (1.0, 0.84, 0.66), 1.6)
-area("rim", (2.4, 1.8, 2.2), (math.radians(-60), 0, math.radians(130)), 1800, (1.0, 0.6, 0.28), 1.0)
+area("key", (-2.2, -2.4, 2.6), (math.radians(55), 0, math.radians(-42)), 380, LIGHTS["key"], 1.6)
+area("rim", (2.4, 1.8, 2.2), (math.radians(-60), 0, math.radians(130)), 1800, LIGHTS["rim"], 1.0)
 area("fill", (1.8, -3.0, 0.6), (math.radians(85), 0, math.radians(30)), 45, (0.85, 0.85, 0.95), 3.0)
 
 world = bpy.data.worlds.new("space")

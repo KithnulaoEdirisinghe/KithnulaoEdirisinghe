@@ -1,30 +1,39 @@
 #!/usr/bin/env python3
-"""Renders the static space imagery in assets/render/ (run once; the results are committed).
+"""Renders the static space imagery in assets/render/<palette>/ (run once per palette; committed).
 
 - gargantua.jpg  ray-traced black hole for the header: photons are bent around a
                  Schwarzschild black hole, so the accretion disk is lensed into the
                  halo over and under the shadow and background stars are distorted.
 - space.jpg      a tall warm starfield/dust texture the other panels are cut from.
 
-    python scripts/render_space.py
+    python scripts/render_space.py [gargantua|purple]
 Needs numpy and Pillow.
 """
 import os
+import sys
 
 import numpy as np
 from PIL import Image, ImageFilter
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "render")
+RENDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "render")
 rng = np.random.default_rng(7)
 
-# colours of the disk from cool outer edge to white-hot inner edge (linear-ish RGB)
-DISK_RAMP = np.array([
-    [0.10, 0.04, 0.015],
-    [0.42, 0.17, 0.05],
-    [0.88, 0.48, 0.18],
-    [1.00, 0.80, 0.55],
-    [1.00, 0.95, 0.86],
-], dtype=np.float32)
+# per palette: disk colours from cool outer edge to white-hot inner edge, dust tint, overall grade
+PALETTES = {
+    "gargantua": {
+        "disk": [[0.10, 0.04, 0.015], [0.42, 0.17, 0.05], [0.88, 0.48, 0.18], [1.00, 0.80, 0.55], [1.00, 0.95, 0.86]],
+        "dust": [0.13, 0.075, 0.04],
+        "grade": [1.0, 0.93, 0.84],
+    },
+    "purple": {
+        "disk": [[0.05, 0.02, 0.12], [0.24, 0.07, 0.45], [0.58, 0.18, 0.88], [0.93, 0.50, 1.00], [1.00, 0.90, 0.97]],
+        "dust": [0.07, 0.035, 0.15],
+        "grade": [0.93, 0.88, 1.0],
+    },
+}
+PALETTE = sys.argv[1] if len(sys.argv) > 1 else "gargantua"
+OUT = os.path.join(RENDER, PALETTE)
+DISK_RAMP = np.array(PALETTES[PALETTE]["disk"], dtype=np.float32)
 
 
 def ramp(t):
@@ -62,7 +71,7 @@ def fbm(shape, octaves, seed, scale=1.0):
     return out / total
 
 
-def render_black_hole(W, H, bh_x=0.70, bh_y=0.47, dist=19.0, incl_deg=6.0, half_fov=0.46, roll_deg=-9.0):
+def render_black_hole(W, H, bh_x=0.72, bh_y=0.47, dist=19.0, incl_deg=6.0, half_fov=0.46, roll_deg=-9.0):
     """Schwarzschild ray tracer (units of the Schwarzschild radius)."""
     stars = star_map(4096, 2048, 26000, 3)
     cam = np.array([0, dist * np.sin(np.radians(incl_deg)), -dist * np.cos(np.radians(incl_deg))], np.float32)
@@ -155,7 +164,7 @@ def finish(img, bloom=True, grain=0.012, seed=1):
             img = img + k * 3 * np.asarray(b8.filter(ImageFilter.GaussianBlur(radius)), np.float32) / 255
     x = img * 1.05
     img = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14)  # ACES fit
-    img = img * np.array([1.0, 0.93, 0.84], np.float32)  # warm grade
+    img = img * np.array(PALETTES[PALETTE]["grade"], np.float32)
     img += np.random.default_rng(seed).normal(0, grain, img.shape).astype(np.float32)
     return (np.clip(img, 0, 1) ** (1 / 1.05) * 255).astype(np.uint8)
 
@@ -179,7 +188,7 @@ def render_space(W, H):
     """Warm dusty deep-space texture with a dense, faint starfield."""
     dust = fbm((H, W), 7, 11, scale=0.6) ** 2.4
     lanes = fbm((H, W), 6, 23, scale=0.5)
-    base = np.stack([dust * 0.13, dust * 0.075, dust * 0.04], -1) * (0.6 + 0.8 * lanes[..., None])
+    base = dust[..., None] * np.array(PALETTES[PALETTE]["dust"], np.float32) * (0.6 + 0.8 * lanes[..., None])
     stars = star_map(W, H, int(W * H / 140), 5)
     img = base + stars * 0.9
     return finish(img.astype(np.float32), bloom=False, grain=0.01, seed=2)
@@ -191,7 +200,7 @@ if __name__ == "__main__":
     bh = render_black_hole(W * 2, H * 2)
     bh = bh.reshape(H, 2, W, 2, 3).mean(axis=(1, 3))  # 2x2 supersampling
     img = finish(bh)
-    img = add_planet(img, int(W * 0.47), int(H * 0.31), 7, light_x=1)
+    img = add_planet(img, int(W * 0.55), int(H * 0.30), 6, light_x=1)
     Image.fromarray(img).save(os.path.join(OUT, "gargantua.jpg"), quality=86, optimize=True, progressive=True)
     Image.fromarray(render_space(1200, 2000)).save(os.path.join(OUT, "space.jpg"), quality=82, optimize=True,
                                                    progressive=True)

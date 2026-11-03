@@ -4,12 +4,14 @@
 GitHub READMEs can't set fonts or backgrounds, so the decorative parts (header,
 dividers, TARS briefing, telemetry, featured mission, star chart) are SVGs with the
 fonts embedded. Everything people read or click lives in README.md as markdown.
-Imagery comes from renders in assets/render/ (scripts/render_space.py and
-scripts/render_tars.py); the moon is rendered fresh on every run. It also writes
-assets/data.json and refreshes the TARS questions in README.md.
+Imagery comes from renders in assets/render/<palette>/ (scripts/render_space.py
+and scripts/render_tars.py). It also writes assets/data.json, which keeps the last
+repo activity for runs whose token can't see private repos.
 
 Run locally:
     PROFILE_TOKEN=$(gh auth token) python scripts/build_profile.py
+Set PROFILE_PALETTE to build another palette and PROFILE_OUT to write elsewhere
+(e.g. a preview folder) instead of assets/.
 The GitHub Action runs it every few hours. PROFILE_TOKEN must be a token that can
 read the private repos you contribute to; without it, the per-repo star chart and
 TARS's repo line keep their last values.
@@ -20,18 +22,13 @@ import json
 import math
 import os
 import random
-import re
 import textwrap
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from html import escape
 
-import numpy as np
 from PIL import Image
-
-import tars_reply
-from render_space import fbm
 
 USER = "KithnulaoEdirisinghe"
 NAME = "Kithnula Edirisinghe"
@@ -77,30 +74,23 @@ TARS_JOKES = [
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 ASSETS = os.path.join(ROOT, "assets")
 DATA_PATH = os.path.join(ASSETS, "data.json")
-RENDER = os.path.join(ASSETS, "render")
-README = os.path.join(ROOT, "README.md")
-# Questions visitors can open under TARS in the README; answers are refreshed every run.
-TARS_QUESTIONS = [
-    "What is Kithnula building?",
-    "What's his tech stack?",
-    "How active has he been?",
-    "What's in the sky tonight?",
-    "How long is that on Miller's planet?",
-    "Tell me a joke.",
-    "How do I reach him?",
-]
+OUT = os.environ.get("PROFILE_OUT", ASSETS)
 
 W = 1200
-# palette, taken from Gargantua: warm near-black, bronze and amber disk light, cream-white core
-INK = "#050403"
-DEEP = "#1a110a"
-EMBER = "#8a5a32"
-AMBER = "#e0904a"
-GOLD = "#ecc790"
-CREAM = "#f6e7cf"
-SAND = "#cbb89c"
-DIM = "#8a7966"
-LINE = "#2e2219"
+PALETTES = {
+    # taken from the Gargantua still: warm near-black, bronze and amber disk light, cream-white core
+    "gargantua": dict(INK="#050403", DEEP="#1a110a", EMBER="#8a5a32", AMBER="#e0904a", GOLD="#ecc790",
+                      CREAM="#f6e7cf", SAND="#cbb89c", DIM="#8a7966", LINE="#2e2219",
+                      WORDMARK_MID="#f0c48c", PANEL="#0b0805", MOON_SHADE="#b9a68a", MOON_DARK="#120c07"),
+    # deep indigo to black with violet and magenta light, cyan data and a pale pink core
+    "purple": dict(INK="#010030", DEEP="#160078", EMBER="#7226ff", AMBER="#f042ff", GOLD="#87f5f5",
+                   CREAM="#ffe5f1", SAND="#cdbff7", DIM="#8f86c9", LINE="#2b1f73",
+                   WORDMARK_MID="#f7b8ff", PANEL="#05032b", MOON_SHADE="#c9b6d6", MOON_DARK="#0b0640"),
+}
+PALETTE = os.environ.get("PROFILE_PALETTE", "gargantua")
+(INK, DEEP, EMBER, AMBER, GOLD, CREAM, SAND, DIM, LINE,
+ WORDMARK_MID, PANEL, MOON_SHADE, MOON_DARK) = PALETTES[PALETTE].values()
+RENDER = os.path.join(ASSETS, "render", PALETTE)
 
 # "KITHNULA" set in Nasalization (Typodermic Fonts, used under its desktop licence
 # for fixed wordmark artwork) and converted to one outline, so the font itself is
@@ -317,25 +307,15 @@ def chip(x, y, label):
             f'letter-spacing="1.5">{escape(label)}</text>'), w
 
 
-def render_moon(phase, size):
-    """Moon with maria, craters and the real terminator for this phase, as an RGBA image."""
-    y, x = (np.mgrid[0:size, 0:size].astype(np.float32) + 0.5) / size * 2 - 1
-    d = np.sqrt(x ** 2 + y ** 2)
-    nz = np.sqrt(np.clip(1 - d ** 2, 0, 1))
-    theta = 2 * np.pi * phase  # 0 new, .25 first quarter (lit right), .5 full
-    lambert = np.clip(x * np.sin(theta) - nz * np.cos(theta), 0, 1)
-    maria = np.clip((fbm((size, size), 5, 31, scale=0.4) - 0.52) * 6, 0, 1)
-    detail = fbm((size, size), 7, 47, scale=0.08)
-    albedo = (0.62 + 0.3 * detail) * (1 - 0.38 * maria)
-    rnd = np.random.default_rng(5)
-    for _ in range(26):
-        cx, cy, r = rnd.uniform(-0.8, 0.8), rnd.uniform(-0.8, 0.8), rnd.uniform(0.03, 0.12)
-        dd = np.sqrt((x - cx) ** 2 + (y - cy) ** 2) / r
-        albedo = albedo * (1 - 0.18 * np.exp(-dd ** 4)) + 0.12 * np.exp(-((dd - 1) * 6) ** 2)
-    shade = albedo * (lambert ** 0.85 + 0.035)  # faint earthshine on the dark side
-    rgb = np.stack([shade * 1.0, shade * 0.95, shade * 0.86], -1)
-    alpha = np.clip((1 - d) * size / 2, 0, 1)
-    return Image.fromarray(np.dstack([np.clip(rgb, 0, 1) * 255, alpha * 255]).astype(np.uint8), "RGBA")
+def moon_path(cx, cy, r, phase):
+    """Lit region of the moon (waxing = lit on the right)."""
+    rx = abs(math.cos(2 * math.pi * phase)) * r
+    top, bottom = f"{cx} {cy - r}", f"{cx} {cy + r}"
+    if phase < 0.5:
+        sweep = 0 if phase < 0.25 else 1
+        return f"M{top}A{r} {r} 0 0 1 {bottom}A{rx:.2f} {r} 0 0 {sweep} {top}z"
+    sweep = 1 if phase > 0.75 else 0
+    return f"M{top}A{r} {r} 0 0 0 {bottom}A{rx:.2f} {r} 0 0 {sweep} {top}z"
 
 
 def wordmark(cx, cy, width, fill):
@@ -354,11 +334,11 @@ def header():
         bh = base64.b64encode(f.read()).decode()
     body = f"""
 <defs>
-  <linearGradient id="wm" x1="0" x2="1"><stop offset="0" stop-color="{CREAM}"/><stop offset=".55" stop-color="#f0c48c"/><stop offset="1" stop-color="{AMBER}"/></linearGradient>
-  <linearGradient id="shade" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".5" stop-color="#000" stop-opacity="0"/></linearGradient>
+  <linearGradient id="wm" x1="0" x2="1"><stop offset="0" stop-color="{CREAM}"/><stop offset=".55" stop-color="{WORDMARK_MID}"/><stop offset="1" stop-color="{AMBER}"/></linearGradient>
+  <linearGradient id="shade" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".5"/><stop offset=".32" stop-color="#000" stop-opacity="0"/></linearGradient>
 </defs>
 <rect width="{W}" height="{H}" fill="url(#shade)"/>
-{wordmark(370, 150, 600, "url(#wm)")}
+{wordmark(340, 150, 560, "url(#wm)")}
 <text class="t" x="72" y="236" fill="#fff" font-size="17" letter-spacing="8">{escape(NAME.upper())}</text>
 <text class="m" x="72" y="268" fill="{SAND}" font-size="13" letter-spacing="3">{escape(TAGLINE)}</text>
 <text class="m" x="28" y="36" fill="{DIM}" font-size="12" letter-spacing="2">LAZARUS PROGRAM  ·  MISSION KE-01</text>
@@ -369,13 +349,17 @@ def header():
 
 
 _HOLE_ICON = None
+# where the black hole sits in gargantua.jpg (fractions of width/height); matches render_space.py
+BH_CENTER = (0.72, 0.47)
 
 
 def hole_icon():
     """Small crop of the black hole render for the section dividers."""
     global _HOLE_ICON
     if _HOLE_ICON is None:
-        crop = Image.open(os.path.join(RENDER, "gargantua.jpg")).crop((980, 150, 1640, 420)).resize((340, 140), Image.LANCZOS)
+        im = Image.open(os.path.join(RENDER, "gargantua.jpg"))
+        cx, cy = BH_CENTER[0] * im.width, BH_CENTER[1] * im.height
+        crop = im.crop((round(cx - 580), round(cy - 242), round(cx + 580), round(cy + 242))).resize((340, 142), Image.LANCZOS)
         _HOLE_ICON = data_uri(crop, quality=85)
     return _HOLE_ICON
 
@@ -411,7 +395,7 @@ def tars(stats, activity, now):
         TARS_JOKES[now.toordinal() % len(TARS_JOKES)],
     ]
     px, py, pw, ph = 330, 60, 820, 290
-    panel_fill = "#0b0805"
+    panel_fill = PANEL
     char_w, size, lh = 9.6, 16, 34
     tx, ty = px + 28, py + 84
     css = ["@keyframes blink{50%{opacity:0}}.caret{animation:blink 1s steps(1) infinite}",
@@ -451,7 +435,7 @@ def tars(stats, activity, now):
 <text class="m" x="{px + pw - 28}" y="{py + 36}" text-anchor="end" fill="{DIM}" font-size="12" letter-spacing="2">HUMOR 75%  ·  HONESTY 90%</text>
 <rect x="{px + 28}" y="{py + 50}" width="{pw - 56}" height="1" fill="{GOLD}" fill-opacity=".25"/>
 {"".join(text)}
-<text class="m" x="{px}" y="{H - 30}" fill="{DIM}" font-size="11" letter-spacing="2">UPDATED {now:%d %b %Y  ·  %H:%M} UTC  ·  ASK TARS BELOW</text>"""
+<text class="m" x="{px}" y="{H - 30}" fill="{DIM}" font-size="11" letter-spacing="2">UPDATED {now:%d %b %Y  ·  %H:%M} UTC  ·  LIVE FROM GITHUB</text>"""
     return svg(H, body, "TARS daily briefing. " + " ".join(briefing), 77, extra_css="\n".join(css),
                nebulas=[(15, 80, 35, EMBER, .18)])
 
@@ -476,7 +460,8 @@ def telemetry(stats, now):
             f'<text class="b" x="{x + 20}" y="198" fill="{SAND}" font-size="14">{caption}</text>')
     css = ".live{animation:live 1.6s ease-in-out infinite}@keyframes live{50%{opacity:.25}}"
     body = f"""
-<defs><radialGradient id="halo" r="50%"><stop offset=".6" stop-color="{CREAM}" stop-opacity=".12"/><stop offset="1" stop-color="{CREAM}" stop-opacity="0"/></radialGradient></defs>
+<defs><radialGradient id="lit" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="{CREAM}"/><stop offset="1" stop-color="{MOON_SHADE}"/></radialGradient>
+<radialGradient id="halo" r="50%"><stop offset=".6" stop-color="{AMBER}" stop-opacity=".22"/><stop offset="1" stop-color="{AMBER}" stop-opacity="0"/></radialGradient></defs>
 <circle class="live" cx="46" cy="44" r="5" fill="{GOLD}"/>
 <text class="m" x="60" y="49" fill="#fff" font-size="13" letter-spacing="3">LIVE TELEMETRY</text>
 <text class="m" x="882" y="49" text-anchor="end" fill="{DIM}" font-size="12" letter-spacing="1.5">T+{stats['days']} DAYS SINCE LAUNCH</text>
@@ -484,7 +469,9 @@ def telemetry(stats, now):
 <text class="m" x="40" y="268" fill="{DIM}" font-size="11" letter-spacing="2">UPDATED {now:%d %b %Y  ·  %H:%M} UTC  ·  LIVE FROM GITHUB</text>
 <circle cx="{mx}" cy="{my}" r="{mr * 1.7}" fill="url(#halo)"/>
 <circle cx="{mx}" cy="{my}" r="{mr + 14}" fill="none" stroke="{LINE}" stroke-dasharray="2 6"/>
-<image x="{mx - mr}" y="{my - mr}" width="{mr * 2}" height="{mr * 2}" href="{data_uri(render_moon(phase, mr * 4), 'PNG', optimize=True)}"/>
+<circle cx="{mx}" cy="{my}" r="{mr}" fill="{MOON_DARK}"/>
+<path d="{moon_path(mx, my, mr, phase)}" fill="url(#lit)"/>
+<g fill="{DEEP}" opacity=".12"><circle cx="{mx - 22}" cy="{my - 16}" r="12"/><circle cx="{mx + 20}" cy="{my + 22}" r="8"/><circle cx="{mx + 8}" cy="{my - 34}" r="5"/><circle cx="{mx - 32}" cy="{my + 24}" r="6"/></g>
 <text class="m" x="{mx}" y="222" text-anchor="middle" fill="{DIM}" font-size="11" letter-spacing="2.5">MOON TONIGHT</text>
 <text class="b" x="{mx}" y="246" text-anchor="middle" fill="#fff" font-size="17" font-weight="700">{phase_name} · {round(lit * 100)}%</text>
 <text class="m" x="{mx}" y="270" text-anchor="middle" fill="{DIM}" font-size="11" letter-spacing="1">FULL {next_full:%d %b} · NEW {next_new:%d %b}</text>"""
@@ -581,9 +568,10 @@ def star_chart(activity, now):
 # ---------------------------------------------------------------- main
 
 def write(name, text):
-    with open(os.path.join(ASSETS, name), "w", encoding="utf-8", newline="\n") as f:
+    os.makedirs(OUT, exist_ok=True)
+    with open(os.path.join(OUT, name), "w", encoding="utf-8", newline="\n") as f:
         f.write(text)
-    print(f"wrote assets/{name} ({len(text) // 1024} KB)")
+    print(f"wrote {name} ({len(text) // 1024} KB)")
 
 
 if __name__ == "__main__":
@@ -597,7 +585,6 @@ if __name__ == "__main__":
     if activity is None:
         print("token can't see private repos; keeping the last star chart (set PROFILE_TOKEN to refresh it)")
         activity = previous.get("activity")
-    phase, lit, phase_name, next_full, next_new = moon_phase(now)
 
     write("header.svg", header())
     for num, title in DIVIDERS:
@@ -607,24 +594,8 @@ if __name__ == "__main__":
     write("mission-featured.svg", featured(stats))
     if activity:
         write("star-chart.svg", star_chart(activity, now))
-    data = {
+    write("data.json", json.dumps({
         "updated": f"{now:%Y-%m-%dT%H:%MZ}",
         "stats": stats,
         "activity": activity,
-        "moon": {"name": phase_name, "lit": round(lit * 100), "next_full": f"{next_full:%d %b}",
-                 "next_new": f"{next_new:%d %b}"},
-        "miller": miller_time(stats["days"]),
-    }
-    write("data.json", json.dumps(data, indent=2) + "\n")
-
-    # TARS answers on the page: each question expands in place, no link out
-    rnd = random.Random(now.toordinal())
-    block = "\n".join(
-        f"<details>\n<summary><b>{escape(q, quote=False)}</b></summary>\n\n> **TARS:** {tars_reply.answer(q, data, rnd)}\n\n</details>"
-        for q in TARS_QUESTIONS)
-    with open(README, encoding="utf-8") as f:
-        readme = f.read()
-    readme = re.sub(r"(<!-- TARS:START -->).*?(<!-- TARS:END -->)", lambda m: f"{m[1]}\n{block}\n{m[2]}", readme, flags=re.S)
-    with open(README, "w", encoding="utf-8", newline="\n") as f:
-        f.write(readme)
-    print("updated TARS answers in README.md")
+    }, indent=2) + "\n")

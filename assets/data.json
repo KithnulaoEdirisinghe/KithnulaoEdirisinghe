@@ -1,11 +1,11 @@
 {
-  "updated": "2026-11-03T13:37Z",
+  "updated": "2026-11-03T14:05Z",
   "stats": {
     "repos": 3,
     "followers": 6,
     "stars": 3,
-    "contribs": 462,
-    "week": 71,
+    "contribs": 463,
+    "week": 72,
     "streak": 2,
     "longest": 20,
     "days": 144,
@@ -58,8 +58,8 @@
       {
         "name": "profile",
         "private": false,
-        "commits": 7,
-        "week": 1
+        "commits": 8,
+        "week": 2
       },
       {
         "name": "classified",
@@ -89,55 +89,48 @@
     "languages": [
       {
         "name": "Luau",
-        "share": 0.28510385050104176
+        "share": 0.2843857047818955
       },
       {
         "name": "C#",
-        "share": 0.28071146576538875
+        "share": 0.28000438398764216
       },
       {
         "name": "Python",
-        "share": 0.1621928739967271
+        "share": 0.1643032194022769
       },
       {
         "name": "HTML",
-        "share": 0.08517728900384317
+        "share": 0.08496273663859419
       },
       {
         "name": "Java",
-        "share": 0.08316204497497755
+        "share": 0.08295256879116149
       },
       {
         "name": "TypeScript",
-        "share": 0.07530406256484902
+        "share": 0.07511437978760759
       },
       {
         "name": "JavaScript",
-        "share": 0.01886590598192445
+        "share": 0.018818384808166454
       },
       {
         "name": "Rust",
-        "share": 0.007388882355808637
+        "share": 0.007370270561461513
       },
       {
         "name": "Groovy",
-        "share": 0.0008207817859930788
+        "share": 0.0008187143255749602
       },
       {
         "name": "Wolfram Language",
-        "share": 0.0007750514682693885
+        "share": 0.000773099197568458
       },
       {
         "name": "CSS",
-        "share": 0.0004977916011771546
+        "share": 0.0004965377180507638
       }
     ]
-  },
-  "moon": {
-    "name": "Last quarter",
-    "lit": 39,
-    "next_full": "24 Nov",
-    "next_new": "09 Nov"
-  },
-  "miller": "3 min 22 s"
+  }
 }

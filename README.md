@@ -16,55 +16,6 @@ AI & Data Science undergrad at **IIT**. I build Windows apps, games and things f
 
 <img src="./assets/tars.svg" width="100%" alt="TARS daily briefing with live stats, the moon and a joke" />
 
-**Talk to TARS.** Pick a question and his answer opens right here. Answers are live and refresh every 3 hours.
-
-<!-- TARS:START -->
-<details>
-<summary><b>What is Kithnula building?</b></summary>
-
-> **TARS:** Featured mission: [MicBridge](https://github.com/KithnulaoEdirisinghe/MicBridge), which turns an Android phone into a wireless mic for Windows. He's also crewed Tick-Talk, OreRivals, Rewards and Live-Wallpaper with friends. Most commits this year: tick-talk (160).
-
-</details>
-<details>
-<summary><b>What's his tech stack?</b></summary>
-
-> **TARS:** Language mix over the last 12 months, weighted by his commits: Luau (29%), C# (28%), Python (16%), HTML (9%), Java (8%).
-
-</details>
-<details>
-<summary><b>How active has he been?</b></summary>
-
-> **TARS:** 462 contributions in the last 12 months, 71 in the last 7 days. Current streak 2 days, longest this year 20. 6 crew members follow him.
-
-</details>
-<details>
-<summary><b>What's in the sky tonight?</b></summary>
-
-> **TARS:** Tonight's moon is last quarter, 39% lit. Next full moon 24 Nov, next new moon 09 Nov. Good nights for deep-sky viewing are around the new moon.
-
-</details>
-<details>
-<summary><b>How long is that on Miller's planet?</b></summary>
-
-> **TARS:** On Miller's planet one hour is seven years here. Kithnula's 144 days on GitHub add up to 3 min 22 s there. Gargantua, meanwhile, is still very heavy.
-
-</details>
-<details>
-<summary><b>Tell me a joke.</b></summary>
-
-> **TARS:** Humor setting at 75%. Here's one: there are 10 kinds of astronauts. Those who read binary, and those who don't.
-
-</details>
-<details>
-<summary><b>How do I reach him?</b></summary>
-
-> **TARS:** Open a channel: kithnulaedirisinghe@gmail.com, or Discord **kithnula**. Response times beat Miller's planet.
-
-</details>
-<!-- TARS:END -->
-
-<sub>Something else on your mind? [Send TARS a transmission](https://github.com/KithnulaoEdirisinghe/KithnulaoEdirisinghe/issues/new?title=TARS%3A%20&body=Write%20your%20question%20in%20the%20title%20after%20%22TARS%3A%22.) and he'll reply there within a minute.</sub>
-
 <img src="./assets/divider-03.svg" width="100%" alt="03 Lazarus missions" />
 
 <a href="https://github.com/KithnulaoEdirisinghe/MicBridge"><img src="./assets/mission-featured.svg" width="100%" alt="Featured mission: MicBridge. Turns an Android phone into a wireless microphone for a Windows PC." /></a>
@@ -92,4 +43,4 @@ Open a channel. I'm always up for talking code, game dev or the night sky.
   <a href="https://github.com/KithnulaoEdirisinghe/MicBridge"><img src="https://img.shields.io/badge/Try-MicBridge-C97B35?style=for-the-badge&logo=github&logoColor=white&labelColor=0C0805" alt="Try MicBridge" /></a>
 </p>
 
-<p align="center"><sub>Telemetry, TARS and the star chart update every 3 hours · Per aspera ad astra</sub></p>
+<p align="center"><sub>Telemetry, TARS's briefing and the star chart update every 3 hours · Per aspera ad astra</sub></p>
