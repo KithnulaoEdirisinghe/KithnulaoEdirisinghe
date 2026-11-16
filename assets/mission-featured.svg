@@ -25,7 +25,7 @@
 <text class="t" x="56" y="110" fill="#f6e7cf" font-size="40" letter-spacing="2">MICBRIDGE</text>
 <text class="b" x="56" y="150.0" fill="#cbb89c" font-size="17">Turns an Android phone into a wireless microphone for a</text><text class="b" x="56" y="176.0" fill="#cbb89c" font-size="17">Windows PC over Wi-Fi. A 100 KB Windows app using about 12</text><text class="b" x="56" y="202.0" fill="#cbb89c" font-size="17">MB of RAM, with low-latency audio and automatic reconnect.</text>
 <rect x="56" y="224" width="45" height="30" rx="15" fill="#8a5a32" fill-opacity=".12" stroke="#2e2219"/><text class="m" x="78.4" y="244" text-anchor="middle" fill="#f6e7cf" font-size="13" letter-spacing="1.5">C#</text><rect x="110.8" y="224" width="87" height="30" rx="15" fill="#8a5a32" fill-opacity=".12" stroke="#2e2219"/><text class="m" x="154.2" y="244" text-anchor="middle" fill="#f6e7cf" font-size="13" letter-spacing="1.5">ANDROID</text><rect x="207.60000000000002" y="224" width="87" height="30" rx="15" fill="#8a5a32" fill-opacity=".12" stroke="#2e2219"/><text class="m" x="251.0" y="244" text-anchor="middle" fill="#f6e7cf" font-size="13" letter-spacing="1.5">WINDOWS</text>
-<text class="m" x="56" y="290" fill="#ecc790" font-size="12" letter-spacing="2.5">STARS 2  ·  VIEW MISSION  →</text>
+<text class="m" x="56" y="290" fill="#ecc790" font-size="12" letter-spacing="2.5">STARS 3  ·  VIEW MISSION  →</text>
 
 <g fill="none" stroke="#cbb89c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -70)">
   <rect x="742" y="150" width="78" height="146" rx="14"/>
